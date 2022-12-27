@@ -1,11 +1,7 @@
 # Ust Quota Tracker
-## TODO (just forked)
 
-## below are original doc when fork
-## Discord Server
+## Description
 
-* NodeJS runtime holding a connection to Discord and a http srv
+This is a fork of the [Ust Quota Tracker](https://github.com/henveloper/discord-ustquotatracker). Most of the unrelated feature have been removed, and some of the code has been factorized.
 
-* The code is trivial and self-explinatory (LOL)
-
-* I don't really care about CRUD anymore, ok if u ask me question, but I reply depend on mood.
+The database is now using mongodb instead of mongoose because of my personal server configuration, modification can be made to [dbInterface.ts](./src/database/dbInterface.ts) to use mongoose instead.

@@ -27,11 +27,13 @@ async function createAllChannel(bot: Bot) {
     // const deptList = ['COMP'];
     const channelMap = new Map<string, string[]>();
     for (const dept of deptList) {
+        console.log('Creating channel for ' + dept);
         const channels = await bot.createUstQuotaDevProdChannelPair(dept);
         channelMap.set(
             dept,
             channels.map((c) => c.id)
         );
     }
+    console.log('All channels created.');
     return channelMap;
 }

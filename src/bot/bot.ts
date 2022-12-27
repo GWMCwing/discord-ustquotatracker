@@ -6,7 +6,15 @@ import {
     TextChannel,
 } from 'discord.js';
 import { configs, isProduction, TConfigs } from '../configs/config';
-
+//
+const dateTimeFormatter = new Intl.DateTimeFormat([], {
+    timeZone: 'Asia/Hong_Kong',
+    hour12: false,
+    hour: 'numeric',
+    minute: 'numeric',
+    second: 'numeric',
+});
+//
 export class Bot {
     static instance = new Bot();
     private client = new Client({
@@ -28,21 +36,18 @@ export class Bot {
         return Bot.instance;
     }
     // initialization
-
+    updatePresence() {
+        this.client.user!.setActivity({
+            type: ActivityType.Watching,
+            name: 'Last Updated: ' + dateTimeFormatter.format(new Date()),
+        });
+    }
     //
     async startup() {
         await this.client.login(configs.bot.token);
-
-        /**
-         * register event listeners
-         * once ready
-         * on message create
-         * on interaction create
-         * on presence update
-         */
         this.client.once('ready', async () => {
             // eslint-disable-next-line no-console
-            await this.client.user!.setActivity({
+            this.client.user!.setActivity({
                 type: ActivityType.Watching,
                 name: 'your every move',
             });

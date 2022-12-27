@@ -1,5 +1,3 @@
-import { ObjectId } from 'mongoose';
-
 export class SectionQuota {
     // public _id!: ObjectId; removed because of conflict with mongodb
 

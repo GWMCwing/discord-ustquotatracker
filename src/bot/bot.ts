@@ -5,6 +5,8 @@ import {
     IntentsBitField,
     TextChannel,
 } from 'discord.js';
+import { exit } from 'process';
+import { createInterface } from 'readline';
 import { configs, isProduction, TConfigs } from '../configs/config';
 //
 const dateTimeFormatter = new Intl.DateTimeFormat([], {
@@ -46,10 +48,9 @@ export class Bot {
     async startup() {
         await this.client.login(configs.bot.token);
         this.client.once('ready', async () => {
-            // eslint-disable-next-line no-console
             this.client.user!.setActivity({
                 type: ActivityType.Watching,
-                name: 'your every move',
+                name: 'Initializing...',
             });
         });
     }
@@ -89,6 +90,29 @@ export class Bot {
             });
         }
         return channels;
+    }
+
+    public async massDeleteChannel() {
+        const rl = createInterface({
+            input: process.stdin,
+            output: process.stdout,
+        });
+        rl.question(
+            'Are you sure you want to delete all channels? (y/n)',
+            async (answer) => {
+                if (answer !== 'y') {
+                    console.log('Aborted.');
+                    exit();
+                }
+            }
+        );
+
+        const categoryChIds = configs.discord.categoryChIds;
+        for (let i = 0; i < 2; i++) {
+            const category = await this.getChannelCategory(categoryChIds[i]);
+            const channels = category.children.cache;
+            channels.forEach((channel) => channel.delete());
+        }
     }
 
     /**

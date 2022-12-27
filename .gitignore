@@ -7,5 +7,7 @@
 /build
 /data
 
+/src_old
+
 # secrets
 .env

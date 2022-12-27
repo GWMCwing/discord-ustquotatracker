@@ -1,7 +1,7 @@
-import { ObjectId } from "mongoose";
+import { ObjectId } from 'mongoose';
 
 export class SectionQuota {
-    public _id!: ObjectId;
+    // public _id!: ObjectId; removed because of conflict with mongodb
 
     public semester!: number;
 
@@ -15,7 +15,9 @@ export class SectionQuota {
 
     public assertIdEquivalent(sectionQuota: SectionQuota) {
         if (this.classId !== sectionQuota.classId) {
-            throw new Error("Attempted to compare sectionQuota from different id.");
+            throw new Error(
+                'Attempted to compare sectionQuota from different id.'
+            );
         }
     }
 

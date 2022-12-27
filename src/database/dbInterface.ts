@@ -1,0 +1,41 @@
+import { MongoClient, Db, Collection } from 'mongodb';
+import { SectionQuota } from '../ust_tracker/SectionQuota';
+// database interface is re-written into Mongodb equivalent
+export class DbInterface {
+    static instance: DbInterface | null = null;
+    private dbClient: MongoClient;
+    private db: Db;
+    private collection: Collection;
+    static getInstance() {
+        if (DbInterface.instance === null) {
+            throw new Error('DbInterface not initialized.');
+        }
+        return DbInterface.instance;
+    }
+    constructor(dbClient: MongoClient) {
+        this.dbClient = dbClient;
+        this.db = this.dbClient.db('ust_tracker');
+        this.collection = this.db.collection('section_quota');
+        DbInterface.instance = this;
+    }
+    async insertSectionQuota(sectionQuota: SectionQuota) {
+        // const model = this.mongoResource.sectionQuotaModel;
+        // return model.create(sectionQuota);
+        return this.collection.insertOne(sectionQuota);
+    }
+
+    async updateSectionQuota(classId: number, quota: number) {
+        // const model = this.mongoResource.sectionQuotaModel;
+        // return model.findOneAndUpdate({ classId }, { $set: { quota } }).exec();
+        return this.collection.findOneAndUpdate(
+            { classId },
+            { $set: { quota } }
+        );
+    }
+
+    async getSectionQuota(semester: number, classId: number) {
+        // const model = this.mongoResource.sectionQuotaModel;
+        // return model.findOne({ classId, semester }).exec();
+        return this.collection.findOne({ classId, semester });
+    }
+}

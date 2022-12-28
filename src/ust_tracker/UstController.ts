@@ -62,13 +62,15 @@ export class UstController {
 
                     // iterate each sectionQuotas
                     for (const sectionQuota of sectionQuotas) {
+                        console.log("Checking: " + sectionQuota.courseCode);
                         const document =
                             await DbInterface.getInstance().getSectionQuota(
                                 UstHelper.semester,
                                 sectionQuota.classId
-                            );
+                            ).catch(err=>{console.log(err); return null;});
                         if (document === null) {
                             // the classId is new
+                            console.log("New Section");
                             await DbInterface.getInstance().insertSectionQuota(
                                 sectionQuota
                             );
@@ -76,14 +78,21 @@ export class UstController {
                             logEntries.push(
                                 `🥖 New Section - ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${sectionQuota.quota}).`
                             );
-                        } else if (document.quotaChanged(sectionQuota)) {
-                            // the classId is old and has changed quota
-                            logEntries.push(
-                                `🍕 ️Quota Changed: ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${document.quota} -> ${sectionQuota.quota}).`
-                            );
-                            await DbInterface.getInstance().updateSectionQuota(
+                        } 
+                        else{
+                            const newDoc = await DbInterface.getInstance().updateSectionQuota(
                                 sectionQuota.classId,
                                 sectionQuota.quota
+                            ).catch(err=> {console.log(err); return null;})
+                            if(newDoc === null) continue;
+                            if(JSON.stringify(newDoc.value) === JSON.stringify(document)) {
+                                console.log("Same")
+                                continue;
+                            }
+                            // the classId is old and has changed quota
+                            console.log("Update");
+                            logEntries.push(
+                                `🍕 Quota Changed: ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${document.quota} -> ${sectionQuota.quota}).`
                             );
                         }
                     }

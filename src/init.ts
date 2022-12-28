@@ -18,13 +18,14 @@ async function getDeptList() {
     const $ = load(data);
     const deptList: string[] = [];
     $('#navigator > div.depts > a').each((i, element) => {
-        deptList.push($(element).text().toUpperCase());
+        if(!($(element).hasClass('pg')) ){
+            deptList.push($(element).text().toUpperCase());
+        }
     });
     return deptList;
 }
 async function createAllChannel(bot: Bot) {
     const deptList = await getDeptList();
-    // const deptList = ['COMP'];
     const channelMap = new Map<string, string[]>();
     for (const dept of deptList) {
         console.log('Creating channel for ' + dept);

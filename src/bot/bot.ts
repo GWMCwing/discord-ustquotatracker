@@ -54,6 +54,9 @@ export class Bot {
             });
         });
     }
+    async stop(){
+        this.client.destroy();
+    }
     //
     public async getChannel(channelId: string) {
         return this.client.channels.fetch(channelId, {

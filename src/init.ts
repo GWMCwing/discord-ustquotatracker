@@ -2,14 +2,16 @@ import axios from 'axios';
 import { load } from 'cheerio';
 import { TextChannel } from 'discord.js';
 import { Bot } from './bot/bot';
-
+import {writeFileSync} from 'fs'
 init();
 
 async function init() {
     const bot = new Bot();
     bot.startup();
     const channelMap = await createAllChannel(bot);
-    console.log(Object.fromEntries(channelMap));
+    const deptObj = Object.fromEntries(channelMap)
+    console.log(deptObj);
+    writeFileSync('../deptList.json',JSON.stringify(deptObj,null,2));
 }
 
 async function getDeptList() {

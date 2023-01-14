@@ -26,17 +26,19 @@ export class DbInterface implements DbInterfaceBase {
     async insertSectionQuota(sectionQuota: SectionQuota) {
         // const model = this.mongoResource.sectionQuotaModel;
         // return model.create(sectionQuota);
+        console.log('inserting: ', sectionQuota.classId);
         return await this.collection.insertOne(sectionQuota);
     }
 
     async updateSectionQuota(classId: number, quota: number) {
         // const model = this.mongoResource.sectionQuotaModel;
         // return model.findOneAndUpdate({ classId }, { $set: { quota } }).exec();
+
         return await this.collection.findOneAndUpdate(
             { classId: classId },
-            { $set: { quota: quota }},
+            { $set: { quota: quota } },
             {
-                returnDocument: "after"
+                returnDocument: 'after',
             }
         );
     }
@@ -44,6 +46,9 @@ export class DbInterface implements DbInterfaceBase {
     async getSectionQuota(semester: number, classId: number) {
         // const model = this.mongoResource.sectionQuotaModel;
         // return model.findOne({ classId, semester }).exec();
-        return await this.collection.findOne({ classId:classId,semester: semester });
+        return await this.collection.findOne({
+            classId: classId,
+            semester: semester,
+        });
     }
 }

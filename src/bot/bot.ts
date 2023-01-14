@@ -2,6 +2,7 @@ import {
     ActivityType,
     ChannelType,
     Client,
+    EmbedBuilder,
     IntentsBitField,
     TextChannel,
 } from 'discord.js';
@@ -53,6 +54,7 @@ export class Bot {
                 name: 'Initializing...',
             });
         });
+        console.log("Bot is ready");
     }
     async stop(){
         this.client.destroy();
@@ -140,4 +142,28 @@ export class Bot {
         }
         return channel;
     }
+    public async sendMessage(channel:TextChannel, message:string, dept:string, count:number){
+        let embed = new EmbedBuilder()
+                        .setTitle("Deptartment Page")
+                        .setURL(`https://w5.ab.ust.hk/wcq/cgi-bin/2230/subject/${dept}`)
+                        .setDescription(message)
+                        .setTimestamp()
+        channel.send({content: `${dept} ${count} Section Quota Updated`,embeds:[embed]})
+    }
 }
+// const lib = require('lib')({token: process.env.STDLIB_SECRET_TOKEN});
+
+// await lib.discord.channels['@0.3.2'].messages.create({
+//   "channel_id": `${context.params.event.channel_id}`,
+//   "content": `DEPT x Course Quota Updated`,
+//   "tts": false,
+//   "embeds": [
+//     {
+//       "type": "rich",
+//       "title": `Deptartment Page`,
+//       "description": `DEPT1\nDEPT2\nDEPT3`,
+//       "color": 0x00FFFF,
+//       "url": `Course link`
+//     }
+//   ]
+// });

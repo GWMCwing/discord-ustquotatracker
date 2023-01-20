@@ -105,7 +105,7 @@ export class UstController {
                             }
                             // the classId is old and has changed quota
                             console.log('Update', sectionQuota.courseCode);
-                            const changes = document.quota - sectionQuota.quota;
+                            const changes = sectionQuota.quota - document.quota;
                             logEntries.push(
                                 `🍕 Quota Changed: ${courseCode} - ${title} [${
                                     sectionQuota.section

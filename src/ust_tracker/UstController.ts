@@ -105,8 +105,15 @@ export class UstController {
                             }
                             // the classId is old and has changed quota
                             console.log('Update', sectionQuota.courseCode);
+                            const changes = document.quota - sectionQuota.quota;
                             logEntries.push(
-                                `🍕 Quota Changed: ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${document.quota} -> ${sectionQuota.quota}).`
+                                `🍕 Quota Changed: ${courseCode} - ${title} [${
+                                    sectionQuota.section
+                                }(${sectionQuota.classId})] (${
+                                    document.quota
+                                } -> ${sectionQuota.quota} (${
+                                    changes > 0 ? '+' + changes : changes
+                                })).`
                             );
                         }
                     }
@@ -137,7 +144,8 @@ export class UstController {
             } catch (err) {
                 // ignore
             }
-            console.log('Course Quota Updated...');
+            console.log(`${subject} Course Quota Updated...`);
         }
+        console.log(`Updated all courses`);
     }
 }

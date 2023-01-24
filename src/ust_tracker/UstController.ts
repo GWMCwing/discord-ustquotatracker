@@ -3,6 +3,8 @@ import { UstHelper } from './UstHelper';
 import { DbInterface } from '../database/dbInterface';
 import { Bot } from '../bot/bot';
 
+// TODO logging handler for all corn job and errors, to discord or console
+// TODO separate into smaller functions
 export class UstController {
     constructor() {}
 
@@ -73,6 +75,7 @@ export class UstController {
                                 console.log(err);
                                 return null;
                             });
+                        //
                         if (document === null) {
                             // the classId is new
                             console.log(
@@ -86,36 +89,36 @@ export class UstController {
                             logEntries.push(
                                 `🥖 New Section - ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${sectionQuota.quota}).`
                             );
-                        } else {
-                            const newDoc = await DbInterface.getInstance()
-                                .updateSectionQuota(
-                                    sectionQuota.classId,
-                                    sectionQuota.quota
-                                )
-                                .catch((err) => {
-                                    console.log(err);
-                                    return null;
-                                });
-                            if (newDoc === null) continue;
-                            if (
-                                JSON.stringify(newDoc.value) ===
-                                JSON.stringify(document)
-                            ) {
-                                continue;
-                            }
-                            // the classId is old and has changed quota
-                            console.log('Update', sectionQuota.courseCode);
-                            const changes = sectionQuota.quota - document.quota;
-                            logEntries.push(
-                                `🍕 Quota Changed: ${courseCode} - ${title} [${
-                                    sectionQuota.section
-                                }(${sectionQuota.classId})] (${
-                                    document.quota
-                                } -> ${sectionQuota.quota} (${
-                                    changes > 0 ? '+' + changes : changes
-                                })).`
-                            );
+                            continue;
                         }
+                        //
+                        // console.log('Updating');
+                        const newDoc = await DbInterface.getInstance()
+                            .updateSectionQuota(
+                                sectionQuota.classId,
+                                sectionQuota.quota
+                            )
+                            .catch((err) => {
+                                console.log(err);
+                                return null;
+                            });
+                        if (newDoc === null) continue;
+                        if (
+                            JSON.stringify(newDoc.value) ===
+                            JSON.stringify(document)
+                        ) {
+                            continue;
+                        }
+                        // the classId is old and has changed quota
+                        console.log('Update', sectionQuota.courseCode);
+                        const changes = sectionQuota.quota - document.quota;
+                        logEntries.push(
+                            `🍕 Quota Changed: ${courseCode} - ${title} [${
+                                sectionQuota.section
+                            }(${sectionQuota.classId})] (${document.quota} -> ${
+                                sectionQuota.quota
+                            } (${changes > 0 ? '+' + changes : changes})).`
+                        );
                     }
                 }
 
@@ -130,19 +133,17 @@ export class UstController {
                         text += `${entry}\n`;
                         count++;
                         if (text.length >= 1500) {
-                            // await ch.send(text);
                             await bot.sendMessage(ch, text, subject, count);
                             text = '';
                             count = 0;
                         }
                     }
                     if (text.length !== 0) {
-                        // await ch.send(text);
                         await bot.sendMessage(ch, text, subject, count);
                     }
                 }
             } catch (err) {
-                // ignore
+                console.error(err);
             }
             console.log(`${subject} Course Quota Updated...`);
         }

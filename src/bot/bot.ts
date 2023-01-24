@@ -4,12 +4,14 @@ import {
     Client,
     EmbedBuilder,
     IntentsBitField,
+    NewsChannel,
     TextChannel,
 } from 'discord.js';
 import { exit } from 'process';
 import { createInterface } from 'readline';
 import { configs, isProduction, TConfigs } from '../configs/config';
 //
+// TODO: add type predicate for supported channels
 const dateTimeFormatter = new Intl.DateTimeFormat([], {
     timeZone: 'Asia/Hong_Kong',
     hour12: false,
@@ -54,9 +56,9 @@ export class Bot {
                 name: 'Initializing...',
             });
         });
-        console.log("Bot is ready");
+        console.log('Bot is ready');
     }
-    async stop(){
+    async stop() {
         this.client.destroy();
     }
     //
@@ -80,19 +82,20 @@ export class Bot {
      */
     public async createUstQuotaDevProdChannelPair(
         subjectKey: string
-    ): Promise<[prod: TextChannel, dev: TextChannel]> {
+    ): Promise<[prod: NewsChannel, dev: NewsChannel]> {
         const guild = await this.client.guilds.fetch(
             configs.discord.guildIds.quotaTracker
         );
         const categoryChIds = configs.discord.categoryChIds;
-        const channels: [TextChannel, TextChannel] = [null, null] as any;
+        const channels: [NewsChannel, NewsChannel] = [null, null] as any;
         for (let i = 0; i < 2; i++) {
             const category = await this.getChannelCategory(categoryChIds[i]);
-            channels[i] = await guild.channels.create<ChannelType.GuildText>({
-                name: subjectKey,
-                parent: category,
-                type: ChannelType.GuildText,
-            });
+            channels[i] =
+                await guild.channels.create<ChannelType.GuildAnnouncement>({
+                    name: subjectKey,
+                    parent: category,
+                    type: ChannelType.GuildAnnouncement,
+                });
         }
         return channels;
     }
@@ -125,30 +128,50 @@ export class Bot {
      */
     public async getUstTextChannel(
         subjectKey: keyof TConfigs['discord']['ustChIds']
-    ): Promise<TextChannel> {
+    ): Promise<TextChannel | NewsChannel> {
         const channelId =
             configs.discord.ustChIds[subjectKey][isProduction ? 0 : 1];
         const channel = await this.getChannel(channelId);
         if (!channel) {
             throw new Error('Channel ID corresponds to nothing.');
         }
-        if (!(channel instanceof TextChannel)) {
+        if (
+            !(channel instanceof TextChannel) &&
+            !(channel instanceof NewsChannel)
+        ) {
             throw new Error(
-                `Requested is not instance of text channel, actual: ${typeof channel}`
+                `Requested is not instance of text/news channel, actual: ${typeof channel}`
             );
         }
-        if (channel.type !== ChannelType.GuildText) {
-            throw new Error('Requested channel type of not GUILD_TEXT.');
+        if (
+            channel.type !== ChannelType.GuildText &&
+            channel.type !== ChannelType.GuildAnnouncement
+        ) {
+            throw new Error(
+                'Requested channel type of not GUILD_TEXT/Announcement.'
+            );
         }
         return channel;
     }
-    public async sendMessage(channel:TextChannel, message:string, dept:string, count:number){
+    public async sendMessage(
+        channel: TextChannel | NewsChannel,
+        message: string,
+        dept: string,
+        count: number
+    ) {
         let embed = new EmbedBuilder()
-                        .setTitle("Deptartment Page")
-                        .setURL(`https://w5.ab.ust.hk/wcq/cgi-bin/2230/subject/${dept}`)
-                        .setDescription(message)
-                        .setTimestamp()
-        channel.send({content: `${dept} ${count} Section Quota Updated`,embeds:[embed]})
+            .setTitle('Department Page')
+            .setURL(`https://w5.ab.ust.hk/wcq/cgi-bin/2230/subject/${dept}`)
+            .setDescription(message)
+            .setTimestamp();
+        channel
+            .send({
+                content: `${dept} ${count} Section Quota Updated`,
+                embeds: [embed],
+            })
+            .catch((err) => {
+                console.log(err);
+            });
     }
 }
 // const lib = require('lib')({token: process.env.STDLIB_SECRET_TOKEN});

@@ -1,5 +1,6 @@
 import { MongoClient, Db, Collection } from 'mongodb';
 import { SectionQuota } from '../ust_tracker/SectionQuota';
+import { semester } from '../configs/config';
 // database interface is re-written into Mongodb equivalent
 abstract class DbInterfaceBase {
     abstract insertSectionQuota(sectionQuota: SectionQuota): Promise<any>;
@@ -35,7 +36,7 @@ export class DbInterface implements DbInterfaceBase {
         // return model.findOneAndUpdate({ classId }, { $set: { quota } }).exec();
 
         return await this.collection.findOneAndUpdate(
-            { classId: classId },
+            { classId: classId, semester: semester },
             { $set: { quota: quota } },
             {
                 returnDocument: 'after',

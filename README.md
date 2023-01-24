@@ -2,7 +2,7 @@
 
 Many thanks for the source code from [_em](https://github.com/henveloper).
 
-A working discord server is deployed on [click here](https://discord.gg/Vwwj8vYKBd).  
+A working discord server is deployed on [click here](https://discord.gg/TTuMfGMtDR).  
 Critical bug fixes should be deployed on or before spring semester enrollment period start.  
 Feel free to issue pull requests or open new issue for feedback.
 

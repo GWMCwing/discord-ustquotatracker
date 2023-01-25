@@ -5,18 +5,21 @@ import { MongoClient } from 'mongodb';
 import { DbInterface } from './database/dbInterface';
 import { CronJob } from 'cron';
 import { UstController } from './ust_tracker/UstController';
+import { CLL } from './logging/consoleLogging';
+
+const threadName = 'Main';
 
 startup();
 
 async function startup() {
-    console.log(`Starting up... as ${process.env.NODE_ENV}`);
-    console.log('Connecting to database...');
+    CLL.log(threadName, 'startup', `Starting up... as ${process.env.NODE_ENV}`);
+    CLL.log(threadName, 'startup', 'Connecting to database...');
     const dbClient = new MongoClient(configs.mongo.uri);
     const dbInterface = new DbInterface(dbClient);
-    console.log('Login to Discord...');
+    CLL.log(threadName, 'startup', 'Login to Discord...');
     const bot = new Bot();
     await bot.startup();
-    console.log('Starting cron job...');
+    CLL.log(threadName, 'startup', 'Starting cron job...');
     await UstController.update();
     Bot.getInstance().updatePresence();
     startCornJob();
@@ -27,10 +30,10 @@ function startCornJob() {
     new CronJob({
         cronTime: '*/5 * * * *',
         onTick: async () => {
-            console.log('Cron job ticked.');
+            CLL.log('Corn-Job', 'Start-Job', 'Cron job ticked.');
             await UstController.update();
             Bot.getInstance().updatePresence();
-            console.log('Cron job done.');
+            CLL.log('Corn-Job', 'End-Job', 'Cron job done.');
         },
         timeZone,
     }).start();

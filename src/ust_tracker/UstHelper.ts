@@ -9,7 +9,7 @@ type TUstQuotaSiteData = Map<
     string,
     { title: string; sectionQuotas: SectionQuota[] }
 >;
-// split all handling into different functions
+// TODO: split all handling into different functions
 export class UstHelper {
     static readonly semester = semester; // just change this for each semester
 

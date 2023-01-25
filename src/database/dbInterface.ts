@@ -1,12 +1,14 @@
 import { MongoClient, Db, Collection } from 'mongodb';
 import { SectionQuota } from '../ust_tracker/SectionQuota';
 import { semester } from '../configs/config';
+import { CLL } from '../logging/consoleLogging';
 // database interface is re-written into Mongodb equivalent
 abstract class DbInterfaceBase {
     abstract insertSectionQuota(sectionQuota: SectionQuota): Promise<any>;
     abstract updateSectionQuota(classId: number, quota: number): Promise<any>;
     abstract getSectionQuota(semester: number, classId: number): Promise<any>;
 }
+const threadName = 'Database';
 export class DbInterface implements DbInterfaceBase {
     static instance: DbInterface | null = null;
     private dbClient: MongoClient;
@@ -27,7 +29,11 @@ export class DbInterface implements DbInterfaceBase {
     async insertSectionQuota(sectionQuota: SectionQuota) {
         // const model = this.mongoResource.sectionQuotaModel;
         // return model.create(sectionQuota);
-        console.log('inserting: ', sectionQuota.classId);
+        CLL.log(
+            threadName,
+            'InsertSection',
+            `inserting: ${sectionQuota.classId}`
+        );
         return await this.collection.insertOne(sectionQuota);
     }
 

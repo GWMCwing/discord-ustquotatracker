@@ -9,7 +9,8 @@ import {
 } from 'discord.js';
 import { exit } from 'process';
 import { createInterface } from 'readline';
-import { configs, isProduction, TConfigs } from '../configs/config';
+import { configs, isProduction, semester, TConfigs } from '../configs/config';
+import { CLL } from '../logging/consoleLogging';
 //
 // TODO: add type predicate for supported channels
 const dateTimeFormatter = new Intl.DateTimeFormat([], {
@@ -19,6 +20,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat([], {
     minute: 'numeric',
     second: 'numeric',
 });
+const threadName = 'Bot';
 //
 export class Bot {
     static instance = new Bot();
@@ -56,7 +58,7 @@ export class Bot {
                 name: 'Initializing...',
             });
         });
-        console.log('Bot is ready');
+        CLL.log(threadName, 'startup', 'Bot is ready');
     }
     async stop() {
         this.client.destroy();
@@ -68,34 +70,33 @@ export class Bot {
         });
     }
 
-    public async getChannelCategory(channelId: string) {
-        const channel = await this.getChannel(channelId);
-        if (channel?.type !== ChannelType.GuildCategory) {
+    public async getCategoryChannel(categoryId: string) {
+        const CategoryChannel = await this.getChannel(categoryId);
+        if (CategoryChannel?.type !== ChannelType.GuildCategory) {
             throw new Error(
                 'Channel does not exists or is not of type GUILD_CATEGORY'
             );
         }
-        return channel;
+        return CategoryChannel;
     }
     /**
      * For initial config use
      */
     public async createUstQuotaDevProdChannelPair(
         subjectKey: string
-    ): Promise<[prod: NewsChannel, dev: NewsChannel]> {
+    ): Promise<[prod: TextChannel, dev: TextChannel]> {
         const guild = await this.client.guilds.fetch(
             configs.discord.guildIds.quotaTracker
         );
         const categoryChIds = configs.discord.categoryChIds;
-        const channels: [NewsChannel, NewsChannel] = [null, null] as any;
+        const channels: [TextChannel, TextChannel] = [null, null] as any;
         for (let i = 0; i < 2; i++) {
-            const category = await this.getChannelCategory(categoryChIds[i]);
-            channels[i] =
-                await guild.channels.create<ChannelType.GuildAnnouncement>({
-                    name: subjectKey,
-                    parent: category,
-                    type: ChannelType.GuildAnnouncement,
-                });
+            const category = await this.getCategoryChannel(categoryChIds[i]);
+            channels[i] = await guild.channels.create<ChannelType.GuildText>({
+                name: subjectKey,
+                parent: category,
+                type: ChannelType.GuildText,
+            });
         }
         return channels;
     }
@@ -109,7 +110,7 @@ export class Bot {
             'Are you sure you want to delete all channels? (y/n)',
             async (answer) => {
                 if (answer !== 'y') {
-                    console.log('Aborted.');
+                    CLL.log(threadName, 'abortion', 'Aborted.');
                     exit();
                 }
             }
@@ -117,7 +118,7 @@ export class Bot {
 
         const categoryChIds = configs.discord.categoryChIds;
         for (let i = 0; i < 2; i++) {
-            const category = await this.getChannelCategory(categoryChIds[i]);
+            const category = await this.getCategoryChannel(categoryChIds[i]);
             const channels = category.children.cache;
             channels.forEach((channel) => channel.delete());
         }
@@ -161,7 +162,9 @@ export class Bot {
     ) {
         let embed = new EmbedBuilder()
             .setTitle('Department Page')
-            .setURL(`https://w5.ab.ust.hk/wcq/cgi-bin/2230/subject/${dept}`)
+            .setURL(
+                `https://w5.ab.ust.hk/wcq/cgi-bin/${semester}/subject/${dept}`
+            )
             .setDescription(message)
             .setTimestamp();
         channel
@@ -170,7 +173,7 @@ export class Bot {
                 embeds: [embed],
             })
             .catch((err) => {
-                console.log(err);
+                CLL.error(threadName, 'Send-Message', err);
             });
     }
 }

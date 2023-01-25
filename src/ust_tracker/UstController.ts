@@ -2,17 +2,118 @@ import { configs, TConfigs } from '../configs/config';
 import { UstHelper } from './UstHelper';
 import { DbInterface } from '../database/dbInterface';
 import { Bot } from '../bot/bot';
+import { SectionQuota } from './SectionQuota';
+import { CLL } from '../logging/consoleLogging';
 
+type subjectType = keyof TConfigs['discord']['ustChIds'];
 // TODO logging handler for all corn job and errors, to discord or console
 // TODO separate into smaller functions
+
+const threadName = 'UST-Controller';
 export class UstController {
     constructor() {}
+
+    static async sendLog(subject: subjectType, logEntries: string[]) {
+        const bot = Bot.getInstance();
+        const ch = await bot.getUstTextChannel(subject);
+        // prevents BOOM when first time,
+        let text = '';
+        let count = 0;
+        for (const entry of logEntries) {
+            text += `${entry}\n`;
+            count++;
+            if (text.length >= 1500) {
+                await bot.sendMessage(ch, text, subject, count);
+                text = '';
+                count = 0;
+            }
+        }
+        if (text.length !== 0) {
+            await bot.sendMessage(ch, text, subject, count);
+        }
+        return true;
+    }
+
+    static async updateSectionQuota(
+        sectionQuota: SectionQuota,
+        courseCode: string,
+        title: string
+    ): Promise<string | null> {
+        // console.log('Checking: ' + sectionQuota.courseCode);
+        const document = await DbInterface.getInstance()
+            .getSectionQuota(UstHelper.semester, sectionQuota.classId)
+            .catch((err) => {
+                CLL.error(threadName, 'Section Update', err);
+                return null;
+            });
+        //
+        if (document === null) {
+            // the classId is new
+            CLL.log(
+                threadName,
+                'Section Update',
+                `New Section: ${sectionQuota.courseCode}`
+            );
+            await DbInterface.getInstance().insertSectionQuota(sectionQuota);
+            // tmp comment
+            return `🥖 New Section - ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${sectionQuota.quota}).`;
+        }
+        //
+        // console.log('Updating');
+        const newDoc = await DbInterface.getInstance()
+            .updateSectionQuota(sectionQuota.classId, sectionQuota.quota)
+            .catch((err) => {
+                CLL.error(threadName, 'Section Update', err);
+                return null;
+            });
+        if (newDoc === null) return null;
+        if (JSON.stringify(newDoc.value) === JSON.stringify(document)) {
+            return null;
+        }
+        // the classId is old and has changed quota
+        CLL.log(threadName, 'Section Update', sectionQuota.courseCode);
+        const changes = sectionQuota.quota - document.quota;
+        return `🍕 Quota Changed: ${courseCode} - ${title} [${
+            sectionQuota.section
+        }(${sectionQuota.classId})] (${document.quota} -> ${
+            sectionQuota.quota
+        } (${changes > 0 ? '+' + changes : changes})).`;
+    }
+    static async updateSubject(subject: subjectType) {
+        const data = await UstHelper.getData(UstHelper.getSubjectUrl(subject));
+        const logEntries: string[] = [];
+
+        // iterate each course
+        for (const [courseCode, { title, sectionQuotas }] of [
+            ...data.entries(),
+        ]) {
+            const isUG = +courseCode[5] <= 4;
+            if (!isUG) {
+                continue;
+            }
+
+            // iterate each sectionQuotas
+            for (const sectionQuota of sectionQuotas) {
+                const str = await this.updateSectionQuota(
+                    sectionQuota,
+                    courseCode,
+                    title
+                );
+                if (str) logEntries.push(str);
+            }
+        }
+
+        // send report to discord
+        if (logEntries.length !== 0) {
+            await this.sendLog(subject, logEntries);
+        }
+    }
 
     /**
      * Backend cron logic
      */
     public static async update() {
-        console.log('Start Updating Course Quota...');
+        CLL.log(threadName, 'Course Update', 'Start Updating Course Quota...');
         /** // commented due to repeated declaration of the string tuple
         const subjects: Array<keyof TConfigs['discord']['ustChIds']> = [
             'ACCT',
@@ -41,112 +142,21 @@ export class UstController {
             'SUST',
         ];
         */
-        const subjects: Array<keyof TConfigs['discord']['ustChIds']> =
-            Object.keys(configs.discord.ustChIds) as unknown as Array<
-                keyof TConfigs['discord']['ustChIds']
-            >;
+        const subjects: Array<subjectType> = Object.keys(
+            configs.discord.ustChIds
+        ) as unknown as Array<subjectType>;
         //
         for (const subject of subjects) {
-            // get data
-            try {
-                const data = await UstHelper.getData(
-                    UstHelper.getSubjectUrl(subject)
-                );
-                const logEntries: string[] = [];
-
-                // iterate each course
-                for (const [courseCode, { title, sectionQuotas }] of [
-                    ...data.entries(),
-                ]) {
-                    const isUG = +courseCode[5] <= 4;
-                    if (!isUG) {
-                        continue;
-                    }
-
-                    // iterate each sectionQuotas
-                    for (const sectionQuota of sectionQuotas) {
-                        // console.log('Checking: ' + sectionQuota.courseCode);
-                        const document = await DbInterface.getInstance()
-                            .getSectionQuota(
-                                UstHelper.semester,
-                                sectionQuota.classId
-                            )
-                            .catch((err) => {
-                                console.log(err);
-                                return null;
-                            });
-                        //
-                        if (document === null) {
-                            // the classId is new
-                            console.log(
-                                'New Section: ',
-                                sectionQuota.courseCode
-                            );
-                            await DbInterface.getInstance().insertSectionQuota(
-                                sectionQuota
-                            );
-                            // tmp comment
-                            logEntries.push(
-                                `🥖 New Section - ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${sectionQuota.quota}).`
-                            );
-                            continue;
-                        }
-                        //
-                        // console.log('Updating');
-                        const newDoc = await DbInterface.getInstance()
-                            .updateSectionQuota(
-                                sectionQuota.classId,
-                                sectionQuota.quota
-                            )
-                            .catch((err) => {
-                                console.log(err);
-                                return null;
-                            });
-                        if (newDoc === null) continue;
-                        if (
-                            JSON.stringify(newDoc.value) ===
-                            JSON.stringify(document)
-                        ) {
-                            continue;
-                        }
-                        // the classId is old and has changed quota
-                        console.log('Update', sectionQuota.courseCode);
-                        const changes = sectionQuota.quota - document.quota;
-                        logEntries.push(
-                            `🍕 Quota Changed: ${courseCode} - ${title} [${
-                                sectionQuota.section
-                            }(${sectionQuota.classId})] (${document.quota} -> ${
-                                sectionQuota.quota
-                            } (${changes > 0 ? '+' + changes : changes})).`
-                        );
-                    }
-                }
-
-                // send report to discord
-                if (logEntries.length !== 0) {
-                    const bot = Bot.getInstance();
-                    const ch = await bot.getUstTextChannel(subject);
-                    // prevents BOOM when first time,
-                    let text = '';
-                    let count = 0;
-                    for (const entry of logEntries) {
-                        text += `${entry}\n`;
-                        count++;
-                        if (text.length >= 1500) {
-                            await bot.sendMessage(ch, text, subject, count);
-                            text = '';
-                            count = 0;
-                        }
-                    }
-                    if (text.length !== 0) {
-                        await bot.sendMessage(ch, text, subject, count);
-                    }
-                }
-            } catch (err) {
-                console.error(err);
-            }
-            console.log(`${subject} Course Quota Updated...`);
+            //? use Promise.allSettled ?
+            await this.updateSubject(subject).catch((err) => {
+                CLL.error(threadName, 'Update', err);
+            });
+            CLL.log(
+                threadName,
+                'Course Update',
+                `${subject} Course Quota Updated...`
+            );
         }
-        console.log(`Updated all courses`);
+        CLL.log(threadName, 'Course Update', `Updated all courses`);
     }
 }

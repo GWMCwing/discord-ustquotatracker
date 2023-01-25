@@ -1,11 +1,10 @@
-import { configs, TConfigs } from '../configs/config';
+import { configs, deptName, TConfigs } from '../configs/config';
 import { UstHelper } from './UstHelper';
-import { DbInterface } from '../database/dbInterface';
+import { SectionQuotaDb } from '../database/dbInterface';
 import { Bot } from '../bot/bot';
 import { SectionQuota } from './SectionQuota';
 import { CLL } from '../logging/consoleLogging';
 
-type subjectType = keyof TConfigs['discord']['ustChIds'];
 // TODO logging handler for all corn job and errors, to discord or console
 // TODO separate into smaller functions
 
@@ -13,7 +12,7 @@ const threadName = 'UST-Controller';
 export class UstController {
     constructor() {}
 
-    static async sendLog(subject: subjectType, logEntries: string[]) {
+    static async sendLog(subject: deptName, logEntries: string[]) {
         const bot = Bot.getInstance();
         const ch = await bot.getUstTextChannel(subject);
         // prevents BOOM when first time,
@@ -40,7 +39,7 @@ export class UstController {
         title: string
     ): Promise<string | null> {
         // console.log('Checking: ' + sectionQuota.courseCode);
-        const document = await DbInterface.getInstance()
+        const document = await SectionQuotaDb.getInstance()
             .getSectionQuota(UstHelper.semester, sectionQuota.classId)
             .catch((err) => {
                 CLL.error(threadName, 'Section Update', err);
@@ -54,13 +53,13 @@ export class UstController {
                 'Section Update',
                 `New Section: ${sectionQuota.courseCode}`
             );
-            await DbInterface.getInstance().insertSectionQuota(sectionQuota);
+            await SectionQuotaDb.getInstance().insertSectionQuota(sectionQuota);
             // tmp comment
             return `🥖 New Section - ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${sectionQuota.quota}).`;
         }
         //
         // console.log('Updating');
-        const newDoc = await DbInterface.getInstance()
+        const newDoc = await SectionQuotaDb.getInstance()
             .updateSectionQuota(sectionQuota.classId, sectionQuota.quota)
             .catch((err) => {
                 CLL.error(threadName, 'Section Update', err);
@@ -79,7 +78,7 @@ export class UstController {
             sectionQuota.quota
         } (${changes > 0 ? '+' + changes : changes})).`;
     }
-    static async updateSubject(subject: subjectType) {
+    static async updateSubject(subject: deptName) {
         const data = await UstHelper.getData(UstHelper.getSubjectUrl(subject));
         const logEntries: string[] = [];
 
@@ -142,9 +141,9 @@ export class UstController {
             'SUST',
         ];
         */
-        const subjects: Array<subjectType> = Object.keys(
+        const subjects: Array<deptName> = Object.keys(
             configs.discord.ustChIds
-        ) as unknown as Array<subjectType>;
+        ) as unknown as Array<deptName>;
         //
         for (const subject of subjects) {
             //? use Promise.allSettled ?

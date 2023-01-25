@@ -65,9 +65,7 @@ export class Bot {
     }
     //
     public async getChannel(channelId: string) {
-        return this.client.channels.fetch(channelId, {
-            force: true,
-        });
+        return this.client.channels.fetch(channelId);
     }
 
     public async getCategoryChannel(categoryId: string) {

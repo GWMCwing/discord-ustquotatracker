@@ -54,17 +54,8 @@ export class Bot {
             name: 'Last Updated: ' + dateTimeFormatter.format(new Date()),
         });
     }
-    //
-    async startup_dev() {
-        await this.client.login(configs.bot.token);
-        this.client.once('ready', async () => {
-            // this.client.user!.setActivity({
-            //     type: ActivityType.Watching,
-            //     name: 'Initializing...',
-            // });
-        });
+    handleInteraction() {
         this.client.on(Events.InteractionCreate, async (interaction) => {
-            // console.log('runned');
             if (!interaction.isChatInputCommand()) return;
             const command = this.command.get(interaction.commandName);
             if (!command) {
@@ -87,6 +78,17 @@ export class Bot {
                 });
             }
         });
+    }
+    //
+    async startup_dev() {
+        await this.client.login(configs.bot.token);
+        this.client.once('ready', async () => {
+            // this.client.user!.setActivity({
+            //     type: ActivityType.Watching,
+            //     name: 'Initializing...',
+            // });
+        });
+        this.handleInteraction();
 
         CLL.log(threadName, 'startup', 'Bot is ready');
     }
@@ -98,6 +100,7 @@ export class Bot {
                 name: 'Initializing...',
             });
         });
+        this.handleInteraction();
         CLL.log(threadName, 'startup', 'Bot is ready');
     }
     async stop() {

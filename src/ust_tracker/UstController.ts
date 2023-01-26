@@ -1,37 +1,165 @@
-import { configs, TConfigs } from '../configs/config';
+import { configs, deptName, semester, TConfigs } from '../configs/config';
 import { UstHelper } from './UstHelper';
-import { DbInterface } from '../database/dbInterface';
+import { SectionQuotaDb, UserSubscriptionDb } from '../database/dbInterface';
 import { Bot } from '../bot/bot';
 import { SectionQuota } from './SectionQuota';
 import { CLL } from '../logging/consoleLogging';
 
-type subjectType = keyof TConfigs['discord']['ustChIds'];
 // TODO logging handler for all corn job and errors, to discord or console
 // TODO separate into smaller functions
 
 const threadName = 'UST-Controller';
+
+type logEntry = {
+    courseCode: string;
+    section: number;
+    log: string;
+};
+
+//courseCode:{sectionId:log}
+type NotificationMap = Map<string, Map<number, string>>;
+//userId:{sectionId:log}
+type UserNotificationMap = Map<string, Map<number, string>>;
 export class UstController {
     constructor() {}
-
-    static async sendLog(subject: subjectType, logEntries: string[]) {
-        const bot = Bot.getInstance();
-        const ch = await bot.getUstTextChannel(subject);
-        // prevents BOOM when first time,
+    static generateNotification(logEntries: logEntry[]): NotificationMap {
+        const notificationMap: NotificationMap = new Map();
+        for (let i = 0; i < logEntries.length; i++) {
+            const entry = logEntries[i];
+            if (!notificationMap.get(entry.courseCode)) {
+                notificationMap.set(entry.courseCode, new Map());
+            }
+            notificationMap
+                .get(entry.courseCode)
+                ?.set(entry.section, entry.log);
+        }
+        return notificationMap;
+    }
+    static async generateUserNotification(
+        userNotificationMap: UserNotificationMap,
+        dept: deptName,
+        courseCode: string,
+        sectionCode: number,
+        log: string
+    ) {
+        const userDb = UserSubscriptionDb.getInstance();
+        const userDept_Cursor = userDb.getUser_Dept(semester, dept);
+        const userCourse_Cursor = userDb.getUser_Course(semester, courseCode);
+        const userSection_Cursor = userDb.getUser_Section(
+            semester,
+            sectionCode
+        );
+        await userDept_Cursor.forEach((user) => {
+            let userM = userNotificationMap.get(user.userId);
+            if (!userM) userNotificationMap.set(user.userId, new Map());
+            userNotificationMap.get(user.userId)?.set(sectionCode, log);
+        });
+        await userCourse_Cursor.forEach((user) => {
+            let userM = userNotificationMap.get(user.userId);
+            if (!userM) userNotificationMap.set(user.userId, new Map());
+            userNotificationMap.get(user.userId)?.set(sectionCode, log);
+        });
+        await userSection_Cursor.forEach((user) => {
+            let userM = userNotificationMap.get(user.userId);
+            if (!userM) userNotificationMap.set(user.userId, new Map());
+            userNotificationMap.get(user.userId)?.set(sectionCode, log);
+        });
+        // console.log(JSON.stringify(userNotificationMap, null, 2));
+        return userNotificationMap;
+    }
+    static async sendToChannel_UserNotification(
+        bot: Bot,
+        dept: deptName,
+        notificationMap: NotificationMap,
+        userNotificationMap: UserNotificationMap
+    ) {
+        const userNotificationPromise: Promise<any>[] = [];
         let text = '';
         let count = 0;
-        for (const entry of logEntries) {
-            text += `${entry}\n`;
-            count++;
-            if (text.length >= 1500) {
-                await bot.sendMessage(ch, text, subject, count);
+        const ch = await bot.getUstTextChannel(dept);
+        // rate limit is handled by discord js, do NOT await for messages, as it might thread block
+        for (let [courseCode, sectionEntry] of notificationMap) {
+            for (let [sectionCode, log] of sectionEntry) {
+                userNotificationPromise.push(
+                    this.generateUserNotification(
+                        userNotificationMap,
+                        dept,
+                        courseCode,
+                        sectionCode,
+                        log
+                    )
+                );
+                text += `${log}\n`;
+                count++;
+                if (text.length >= 1500) {
+                    bot.sendMessage_channel(ch, text, dept, count);
+                    text = '';
+                    count = 0;
+                }
+            }
+        }
+        if (text.length !== 0) {
+            bot.sendMessage_channel(ch, text, dept, count);
+        }
+        await Promise.allSettled(userNotificationPromise);
+    }
+    static async sendToUser(
+        bot: Bot,
+        dept: deptName,
+        userNotificationMap: UserNotificationMap
+    ) {
+        // console.log('send to user');
+        // console.log(JSON.stringify(userNotificationMap, null, 2));
+        let text = '';
+        let count = 0;
+        for (let [userId, sectionEntry] of userNotificationMap) {
+            for (let [sectionCode, log] of sectionEntry) {
+                text += `${log}\n`;
+                count++;
+                if (text.length >= 1500) {
+                    bot.sendMessage_User(userId, dept, text, count).catch(
+                        (err) => {
+                            console.error(err);
+                        }
+                    );
+                    text = '';
+                    count = 0;
+                }
+            }
+            if (text.length !== 0) {
+                bot.sendMessage_User(userId, dept, text, count).catch((err) => {
+                    console.error(err);
+                });
                 text = '';
                 count = 0;
             }
         }
-        if (text.length !== 0) {
-            await bot.sendMessage(ch, text, subject, count);
-        }
-        return true;
+    }
+    static async sendLog_dev(dept: deptName, logEntries: logEntry[]) {
+        const bot = Bot.getInstance();
+        const notificationMap = this.generateNotification(logEntries);
+        let userNotificationMap: UserNotificationMap = new Map();
+        await this.sendToChannel_UserNotification(
+            bot,
+            dept,
+            notificationMap,
+            userNotificationMap
+        );
+        // send message to user
+        await this.sendToUser(bot, dept, userNotificationMap);
+    }
+    static async sendLog(dept: deptName, logEntries: logEntry[]) {
+        const bot = Bot.getInstance();
+        const notificationMap = this.generateNotification(logEntries);
+        let userNotificationMap: UserNotificationMap = new Map();
+        await this.sendToChannel_UserNotification(
+            bot,
+            dept,
+            notificationMap,
+            userNotificationMap
+        );
+        // send message to user
+        await this.sendToUser(bot, dept, userNotificationMap);
     }
 
     static async updateSectionQuota(
@@ -40,7 +168,7 @@ export class UstController {
         title: string
     ): Promise<string | null> {
         // console.log('Checking: ' + sectionQuota.courseCode);
-        const document = await DbInterface.getInstance()
+        const document = await SectionQuotaDb.getInstance()
             .getSectionQuota(UstHelper.semester, sectionQuota.classId)
             .catch((err) => {
                 CLL.error(threadName, 'Section Update', err);
@@ -54,13 +182,13 @@ export class UstController {
                 'Section Update',
                 `New Section: ${sectionQuota.courseCode}`
             );
-            await DbInterface.getInstance().insertSectionQuota(sectionQuota);
+            await SectionQuotaDb.getInstance().insertSectionQuota(sectionQuota);
             // tmp comment
             return `🥖 New Section - ${courseCode} - ${title} [${sectionQuota.section}(${sectionQuota.classId})] (${sectionQuota.quota}).`;
         }
         //
         // console.log('Updating');
-        const newDoc = await DbInterface.getInstance()
+        const newDoc = await SectionQuotaDb.getInstance()
             .updateSectionQuota(sectionQuota.classId, sectionQuota.quota)
             .catch((err) => {
                 CLL.error(threadName, 'Section Update', err);
@@ -79,9 +207,9 @@ export class UstController {
             sectionQuota.quota
         } (${changes > 0 ? '+' + changes : changes})).`;
     }
-    static async updateSubject(subject: subjectType) {
-        const data = await UstHelper.getData(UstHelper.getSubjectUrl(subject));
-        const logEntries: string[] = [];
+    static async updateSubject(dept: deptName) {
+        const data = await UstHelper.getData(UstHelper.getSubjectUrl(dept));
+        const logEntries: logEntry[] = [];
 
         // iterate each course
         for (const [courseCode, { title, sectionQuotas }] of [
@@ -99,13 +227,22 @@ export class UstController {
                     courseCode,
                     title
                 );
-                if (str) logEntries.push(str);
+                if (str)
+                    logEntries.push({
+                        courseCode: courseCode,
+                        section: sectionQuota.classId,
+                        log: str,
+                    });
             }
         }
 
         // send report to discord
         if (logEntries.length !== 0) {
-            await this.sendLog(subject, logEntries);
+            if (process.env.NODE_ENV != 'production') {
+                await this.sendLog_dev(dept, logEntries);
+            } else {
+                await this.sendLog(dept, logEntries);
+            }
         }
     }
 
@@ -142,9 +279,9 @@ export class UstController {
             'SUST',
         ];
         */
-        const subjects: Array<subjectType> = Object.keys(
+        const subjects: Array<deptName> = Object.keys(
             configs.discord.ustChIds
-        ) as unknown as Array<subjectType>;
+        ) as unknown as Array<deptName>;
         //
         for (const subject of subjects) {
             //? use Promise.allSettled ?

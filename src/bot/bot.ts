@@ -3,14 +3,22 @@ import {
     ChannelType,
     Client,
     EmbedBuilder,
+    Events,
     IntentsBitField,
     NewsChannel,
     TextChannel,
 } from 'discord.js';
 import { exit } from 'process';
 import { createInterface } from 'readline';
-import { configs, isProduction, semester, TConfigs } from '../configs/config';
+import {
+    configs,
+    deptName,
+    isProduction,
+    semester,
+    TConfigs,
+} from '../configs/config';
 import { CLL } from '../logging/consoleLogging';
+import { getCommandCollection } from './slashCommand';
 //
 // TODO: add type predicate for supported channels
 const dateTimeFormatter = new Intl.DateTimeFormat([], {
@@ -24,6 +32,7 @@ const threadName = 'Bot';
 //
 export class Bot {
     static instance = new Bot();
+    private command = getCommandCollection();
     private client = new Client({
         intents: [
             IntentsBitField.Flags.GuildMessages,
@@ -32,6 +41,8 @@ export class Bot {
             IntentsBitField.Flags.Guilds,
             IntentsBitField.Flags.GuildPresences,
             IntentsBitField.Flags.MessageContent,
+            IntentsBitField.Flags.DirectMessages,
+            IntentsBitField.Flags.DirectMessageTyping,
         ],
     });
     constructor() {
@@ -49,7 +60,43 @@ export class Bot {
             name: 'Last Updated: ' + dateTimeFormatter.format(new Date()),
         });
     }
+    handleInteraction() {
+        this.client.on(Events.InteractionCreate, async (interaction) => {
+            if (!interaction.isChatInputCommand()) return;
+            const command = this.command.get(interaction.commandName);
+            if (!command) {
+                CLL.error(
+                    threadName,
+                    'Command',
+                    'Command not found',
+                    interaction.commandName
+                );
+                return;
+            }
+            try {
+                await command.execute(interaction);
+            } catch (err) {
+                CLL.error(threadName, 'Interaction', err as string);
+                await interaction.followUp({
+                    content:
+                        'There was an error while executing this command. Please try again ',
+                    ephemeral: true,
+                });
+            }
+        });
+    }
     //
+    async startup_dev() {
+        await this.client.login(configs.bot.token);
+        this.client.once('ready', async () => {
+            // this.client.user!.setActivity({
+            //     type: ActivityType.Watching,
+            //     name: 'Initializing...',
+            // });
+        });
+        this.handleInteraction();
+        CLL.log(threadName, 'startup', 'Bot is ready');
+    }
     async startup() {
         await this.client.login(configs.bot.token);
         this.client.once('ready', async () => {
@@ -58,6 +105,7 @@ export class Bot {
                 name: 'Initializing...',
             });
         });
+        this.handleInteraction();
         CLL.log(threadName, 'startup', 'Bot is ready');
     }
     async stop() {
@@ -65,9 +113,7 @@ export class Bot {
     }
     //
     public async getChannel(channelId: string) {
-        return this.client.channels.fetch(channelId, {
-            force: true,
-        });
+        return this.client.channels.fetch(channelId);
     }
 
     public async getCategoryChannel(categoryId: string) {
@@ -154,19 +200,22 @@ export class Bot {
         }
         return channel;
     }
-    public async sendMessage(
-        channel: TextChannel | NewsChannel,
-        message: string,
-        dept: string,
-        count: number
-    ) {
-        let embed = new EmbedBuilder()
+    buildEmbedMessage(dept: deptName, message: string) {
+        return new EmbedBuilder()
             .setTitle('Department Page')
             .setURL(
                 `https://w5.ab.ust.hk/wcq/cgi-bin/${semester}/subject/${dept}`
             )
             .setDescription(message)
             .setTimestamp();
+    }
+    public async sendMessage_channel(
+        channel: TextChannel | NewsChannel,
+        message: string,
+        dept: deptName,
+        count: number
+    ) {
+        let embed = this.buildEmbedMessage(dept, message);
         channel
             .send({
                 content: `${dept} ${count} Section Quota Updated`,
@@ -175,6 +224,27 @@ export class Bot {
             .catch((err) => {
                 CLL.error(threadName, 'Send-Message', err);
             });
+    }
+    public async sendMessage_User(
+        userId: string,
+        dept: deptName,
+        message: string,
+        count: number
+    ) {
+        console.log('Try to send to user: ', userId, 'with message: ', message);
+        let embed = this.buildEmbedMessage(dept, message);
+        const user = await this.client.users.fetch(userId).catch((err) => {
+            console.log(err);
+            return null;
+        });
+        if (!user) return false;
+        if (!user.dmChannel) await user.createDM();
+        user.dmChannel!.send({
+            content: `${dept} ${count} Section Quota Updated`,
+            embeds: [embed],
+        }).catch((err) => {
+            CLL.error(threadName, 'Send-Message', err);
+        });
     }
 }
 // const lib = require('lib')({token: process.env.STDLIB_SECRET_TOKEN});

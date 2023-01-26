@@ -3,6 +3,7 @@ import {
     ChannelType,
     Client,
     EmbedBuilder,
+    Events,
     IntentsBitField,
     NewsChannel,
     TextChannel,
@@ -11,6 +12,7 @@ import { exit } from 'process';
 import { createInterface } from 'readline';
 import { configs, isProduction, semester, TConfigs } from '../configs/config';
 import { CLL } from '../logging/consoleLogging';
+import { getCommandCollection } from './slashCommand';
 //
 // TODO: add type predicate for supported channels
 const dateTimeFormatter = new Intl.DateTimeFormat([], {
@@ -24,6 +26,7 @@ const threadName = 'Bot';
 //
 export class Bot {
     static instance = new Bot();
+    private command = getCommandCollection();
     private client = new Client({
         intents: [
             IntentsBitField.Flags.GuildMessages,
@@ -32,6 +35,8 @@ export class Bot {
             IntentsBitField.Flags.Guilds,
             IntentsBitField.Flags.GuildPresences,
             IntentsBitField.Flags.MessageContent,
+            IntentsBitField.Flags.DirectMessages,
+            IntentsBitField.Flags.DirectMessageTyping,
         ],
     });
     constructor() {
@@ -50,6 +55,41 @@ export class Bot {
         });
     }
     //
+    async startup_dev() {
+        await this.client.login(configs.bot.token);
+        this.client.once('ready', async () => {
+            // this.client.user!.setActivity({
+            //     type: ActivityType.Watching,
+            //     name: 'Initializing...',
+            // });
+        });
+        this.client.on(Events.InteractionCreate, async (interaction) => {
+            // console.log('runned');
+            if (!interaction.isChatInputCommand()) return;
+            const command = this.command.get(interaction.commandName);
+            if (!command) {
+                CLL.error(
+                    threadName,
+                    'Command',
+                    'Command not found',
+                    interaction.commandName
+                );
+                return;
+            }
+            try {
+                await command.execute(interaction);
+            } catch (err) {
+                CLL.error(threadName, 'Interaction', err as string);
+                await interaction.followUp({
+                    content:
+                        'There was an error while executing this command. Please try again ',
+                    ephemeral: true,
+                });
+            }
+        });
+
+        CLL.log(threadName, 'startup', 'Bot is ready');
+    }
     async startup() {
         await this.client.login(configs.bot.token);
         this.client.once('ready', async () => {
@@ -152,7 +192,7 @@ export class Bot {
         }
         return channel;
     }
-    public async sendMessage(
+    public async sendMessage_channel(
         channel: TextChannel | NewsChannel,
         message: string,
         dept: string,
@@ -174,6 +214,12 @@ export class Bot {
                 CLL.error(threadName, 'Send-Message', err);
             });
     }
+    public async sendMessage_User(
+        userId: string,
+        message: string,
+        dept: string,
+        count: number
+    ) {}
 }
 // const lib = require('lib')({token: process.env.STDLIB_SECRET_TOKEN});
 

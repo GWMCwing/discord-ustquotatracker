@@ -8,9 +8,9 @@ import {
     ModifyResult,
 } from 'mongodb';
 import { SectionQuota } from '../ust_tracker/SectionQuota';
-import { semester } from '../configs/config';
+import { semester, UserNotificationType } from '../configs/config';
 import { CLL } from '../logging/consoleLogging';
-import { User } from './user';
+import { createEmptyUser, User } from './user';
 // database interface is re-written into Mongodb equivalent
 const threadName = 'Database';
 export class SectionQuotaDb {
@@ -26,7 +26,9 @@ export class SectionQuotaDb {
     }
     constructor(dbClient: MongoClient) {
         this.dbClient = dbClient;
-        this.db = this.dbClient.db('ust_tracker');
+        this.db = this.dbClient.db(
+            'ust_tracker' + (process.env.NODE_ENV != 'production' ? '_dev' : '')
+        );
         this.collection = this.db.collection('section_quota');
         SectionQuotaDb.instance = this;
     }
@@ -90,13 +92,39 @@ export class UserSubscriptionDb {
     }
     constructor(dbClient: MongoClient) {
         this.dbClient = dbClient;
-        this.db = this.dbClient.db('ust_tracker');
+        this.db = this.dbClient.db(
+            'ust_tracker' + (process.env.NODE_ENV != 'production' ? '_dev' : '')
+        );
         this.collection = this.db.collection('userSubscription');
         UserSubscriptionDb.instance = this;
     }
 
-    async getUser(semester: number, userId: string) {
-        return this.collection.findOne({ semester: semester, userId: userId });
+    async createUser(semester: number, userId: string) {
+        return this.collection.insertOne(createEmptyUser(semester, userId));
+    }
+    async getUser(userId: string) {
+        return this.collection.findOne({ userId: userId });
+    }
+    async getUserSemester(userId: string, semester: number) {
+        return this.collection.findOne({
+            userId: userId,
+            'subscription.semester': semester,
+        });
+    }
+    async generateSemester(userId: string, semester: number) {
+        return this.collection.updateOne(
+            { userId: userId },
+            {
+                $push: {
+                    subscription: {
+                        semester: semester,
+                        dept: [],
+                        course: [],
+                        section: [],
+                    },
+                },
+            }
+        );
     }
 
     async appendSubscription(
@@ -118,7 +146,7 @@ export class UserSubscriptionDb {
         sectionId: number
     ): Promise<ModifyResult<User>>; // TODO: deprecated in 5.0
     async appendSubscription(
-        type: 'dept' | 'course' | 'section',
+        type: UserNotificationType,
         semester: number,
         userId: string,
         str: string | number
@@ -158,7 +186,7 @@ export class UserSubscriptionDb {
         course: number
     ): Promise<ModifyResult<User>>; // TODO: deprecated in 5.0
     async removeSubscription(
-        type: 'dept' | 'course' | 'section',
+        type: UserNotificationType,
         semester: number,
         userId: string,
         course: string | number

@@ -12,6 +12,24 @@ const threadName = 'UST-Controller';
 export class UstController {
     constructor() {}
 
+    static async sendLog_dev(subject: deptName, logEntries: string[]) {
+        const bot = Bot.getInstance();
+        let text = '';
+        let count = 0;
+        for (const entry of logEntries) {
+            text += `${entry}\n`;
+            count++;
+            if (text.length >= 1500) {
+                // await bot.sendMessage_channel(ch, text, subject, count);
+                text = '';
+                count = 0;
+            }
+        }
+        if (text.length !== 0) {
+            // await bot.sendMessage_channel(ch, text, subject, count);
+        }
+        return true;
+    }
     static async sendLog(subject: deptName, logEntries: string[]) {
         const bot = Bot.getInstance();
         const ch = await bot.getUstTextChannel(subject);
@@ -22,13 +40,13 @@ export class UstController {
             text += `${entry}\n`;
             count++;
             if (text.length >= 1500) {
-                await bot.sendMessage(ch, text, subject, count);
+                await bot.sendMessage_channel(ch, text, subject, count);
                 text = '';
                 count = 0;
             }
         }
         if (text.length !== 0) {
-            await bot.sendMessage(ch, text, subject, count);
+            await bot.sendMessage_channel(ch, text, subject, count);
         }
         return true;
     }
@@ -104,7 +122,9 @@ export class UstController {
 
         // send report to discord
         if (logEntries.length !== 0) {
-            await this.sendLog(subject, logEntries);
+            if (process.env.NODE_ENV != 'production')
+                await this.sendLog_dev(subject, logEntries);
+            else await this.sendLog(subject, logEntries);
         }
     }
 

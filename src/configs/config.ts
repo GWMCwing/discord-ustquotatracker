@@ -3,6 +3,8 @@ config();
 export const isProduction = process.env.NODE_ENV === 'production';
 export const semester = 2230;
 //
+export type UserNotificationType = 'dept' | 'course' | 'section';
+//
 const channelIds = {
     cronLogs: [
         'REDACTED', // monitor.dev.cronlogs

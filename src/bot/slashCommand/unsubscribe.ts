@@ -45,10 +45,10 @@ export const unRegisterSubscription = {
         const userId = interaction.user.id;
         if (category === 'department') {
             //
-            const deptString = interaction.options.getString(
-                'department',
-                true
-            );
+            const deptString = interaction.options
+                .getString('department', true)
+                .trim()
+                .toUpperCase();
             const parsedDeptString = await User.validateDept(deptString);
             if (parsedDeptString) {
                 const result = await User.removeSubscription(
@@ -74,7 +74,9 @@ export const unRegisterSubscription = {
                 );
             }
         } else if (category === 'course') {
-            const courseString = interaction.options.getString('course', true);
+            const courseString = interaction.options
+                .getString('course', true)
+                .trim();
             const parsedCourseString = await User.validateCourse(courseString);
             if (parsedCourseString) {
                 const result = await User.removeSubscription(

@@ -6,7 +6,7 @@ import { UserSubscriptionDb } from '../../database/dbInterface';
 export const getSubscribe = {
     data: new SlashCommandBuilder()
         .setName('list')
-        .setDescription('Information for how to use'),
+        .setDescription('Information what has been subscribed'),
     async execute(interaction: ChatInputCommandInteraction) {
         await interaction.deferReply({ ephemeral: true });
         const user = await UserSubscriptionDb.getInstance().getUser(

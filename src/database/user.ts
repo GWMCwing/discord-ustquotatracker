@@ -73,7 +73,7 @@ export class User {
         } else {
             // user exists check for semester
             const userSemester = await UserSubscriptionDb.getInstance()
-                .getUserSemester(userId, semester)
+                .getUser_Semester(userId, semester)
                 .catch((err) => {
                     return null;
                 });

@@ -8,7 +8,7 @@ import {
     ModifyResult,
 } from 'mongodb';
 import { SectionQuota } from '../ust_tracker/SectionQuota';
-import { semester, UserNotificationType } from '../configs/config';
+import { deptName, semester, UserNotificationType } from '../configs/config';
 import { CLL } from '../logging/consoleLogging';
 import { createEmptyUser, User } from './user';
 // database interface is re-written into Mongodb equivalent
@@ -105,10 +105,37 @@ export class UserSubscriptionDb {
     async getUser(userId: string) {
         return this.collection.findOne({ userId: userId });
     }
-    async getUserSemester(userId: string, semester: number) {
+    async getUser_Semester(userId: string, semester: number) {
         return this.collection.findOne({
             userId: userId,
             'subscription.semester': semester,
+        });
+    }
+    getUser_Dept(semester: number, dept: deptName): FindCursor<WithId<User>> {
+        return this.collection.find({
+            'subscription.semester': semester,
+            'subscription.dept': {
+                $in: [dept],
+            },
+        });
+    }
+    getUser_Course(semester: number, course: string): FindCursor<WithId<User>> {
+        return this.collection.find({
+            'subscription.semester': semester,
+            'subscription.course': {
+                $in: [course],
+            },
+        });
+    }
+    getUser_Section(
+        semester: number,
+        section: number
+    ): FindCursor<WithId<User>> {
+        return this.collection.find({
+            'subscription.semester': semester,
+            'subscription.section': {
+                $in: [section],
+            },
         });
     }
     async generateSemester(userId: string, semester: number) {

@@ -25,8 +25,8 @@ async function startupDev() {
     CLL.log(threadName, 'startup', 'Login to Discord...');
     const bot = new Bot();
     await bot.startup_dev();
-    // CLL.log(threadName, 'startup', 'Starting cron job...');
-    // await UstController.update();
+    CLL.log(threadName, 'startup', 'Starting cron job...');
+    await UstController.update();
     // Bot.getInstance().updatePresence();
     // startCornJob();
 }

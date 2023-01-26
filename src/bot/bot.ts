@@ -10,7 +10,13 @@ import {
 } from 'discord.js';
 import { exit } from 'process';
 import { createInterface } from 'readline';
-import { configs, isProduction, semester, TConfigs } from '../configs/config';
+import {
+    configs,
+    deptName,
+    isProduction,
+    semester,
+    TConfigs,
+} from '../configs/config';
 import { CLL } from '../logging/consoleLogging';
 import { getCommandCollection } from './slashCommand';
 //
@@ -89,7 +95,6 @@ export class Bot {
             // });
         });
         this.handleInteraction();
-
         CLL.log(threadName, 'startup', 'Bot is ready');
     }
     async startup() {
@@ -195,19 +200,22 @@ export class Bot {
         }
         return channel;
     }
-    public async sendMessage_channel(
-        channel: TextChannel | NewsChannel,
-        message: string,
-        dept: string,
-        count: number
-    ) {
-        let embed = new EmbedBuilder()
+    buildEmbedMessage(dept: deptName, message: string) {
+        return new EmbedBuilder()
             .setTitle('Department Page')
             .setURL(
                 `https://w5.ab.ust.hk/wcq/cgi-bin/${semester}/subject/${dept}`
             )
             .setDescription(message)
             .setTimestamp();
+    }
+    public async sendMessage_channel(
+        channel: TextChannel | NewsChannel,
+        message: string,
+        dept: deptName,
+        count: number
+    ) {
+        let embed = this.buildEmbedMessage(dept, message);
         channel
             .send({
                 content: `${dept} ${count} Section Quota Updated`,
@@ -219,10 +227,25 @@ export class Bot {
     }
     public async sendMessage_User(
         userId: string,
+        dept: deptName,
         message: string,
-        dept: string,
         count: number
-    ) {}
+    ) {
+        console.log('Try to send to user: ', userId, 'with message: ', message);
+        let embed = this.buildEmbedMessage(dept, message);
+        const user = await this.client.users.fetch(userId).catch((err) => {
+            console.log(err);
+            return null;
+        });
+        if (!user) return false;
+        if (!user.dmChannel) await user.createDM();
+        user.dmChannel!.send({
+            content: `${dept} ${count} Section Quota Updated`,
+            embeds: [embed],
+        }).catch((err) => {
+            CLL.error(threadName, 'Send-Message', err);
+        });
+    }
 }
 // const lib = require('lib')({token: process.env.STDLIB_SECRET_TOKEN});
 

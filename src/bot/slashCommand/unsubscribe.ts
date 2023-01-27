@@ -13,7 +13,9 @@ export const unRegisterSubscription = {
                 .addStringOption((option) =>
                     option
                         .setName('department')
-                        .setDescription('Input the name of the department')
+                        .setDescription(
+                            'Input the name of the department. e.g. COMP'
+                        )
                         .setRequired(true)
                 )
         )
@@ -24,7 +26,9 @@ export const unRegisterSubscription = {
                 .addStringOption((option) =>
                     option
                         .setName('course')
-                        .setDescription('Input the name of the course')
+                        .setDescription(
+                            'Input the course code of the course. e.g. COMP 2211'
+                        )
                         .setRequired(true)
                 )
         )
@@ -35,7 +39,9 @@ export const unRegisterSubscription = {
                 .addIntegerOption((option) =>
                     option
                         .setName('section')
-                        .setDescription('Input the name of the section')
+                        .setDescription(
+                            'Input the section code of the section. e.g. For ACCT 1610 L1, enter 1031'
+                        )
                         .setRequired(true)
                 )
         ),

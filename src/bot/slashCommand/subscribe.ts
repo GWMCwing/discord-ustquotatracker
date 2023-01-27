@@ -13,7 +13,9 @@ export const registerSubscription = {
                 .addStringOption((option) =>
                     option
                         .setName('department')
-                        .setDescription('Input the name of the department')
+                        .setDescription(
+                            'Input the name of the department. e.g. COMP'
+                        )
                         .setRequired(true)
                 )
         )
@@ -24,7 +26,9 @@ export const registerSubscription = {
                 .addStringOption((option) =>
                     option
                         .setName('course')
-                        .setDescription('Input the name of the course')
+                        .setDescription(
+                            'Input the course code of the course. e.g. COMP 2211'
+                        )
                         .setRequired(true)
                 )
         )
@@ -35,7 +39,9 @@ export const registerSubscription = {
                 .addIntegerOption((option) =>
                     option
                         .setName('section')
-                        .setDescription('Input the name of the section')
+                        .setDescription(
+                            'Input the section code of the section. e.g. For ACCT 1610 L1, enter 1031'
+                        )
                         .setRequired(true)
                 )
         ),
@@ -45,10 +51,10 @@ export const registerSubscription = {
         const userId = interaction.user.id;
         if (category === 'department') {
             //
-            const deptString = interaction.options.getString(
-                'department',
-                true
-            );
+            const deptString = interaction.options
+                .getString('department', true)
+                .trim()
+                .toUpperCase();
             const parsedDeptString = await User.validateDept(deptString);
             if (parsedDeptString) {
                 const result = await User.addSubscription(
@@ -74,7 +80,9 @@ export const registerSubscription = {
                 );
             }
         } else if (category === 'course') {
-            const courseString = interaction.options.getString('course', true);
+            const courseString = interaction.options
+                .getString('course', true)
+                .trim();
             const parsedCourseString = await User.validateCourse(courseString);
             if (parsedCourseString) {
                 const result = await User.addSubscription(

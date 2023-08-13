@@ -6,7 +6,8 @@
   "scripts": {
     "updateDependencies": "npm update && npm update --save-dev",
     "build": "tsc --build --clean && tsc",
-    "start": "node build/index.js",
+    "init": "tsc --build --clean && tsc && node build/init.js",
+    "start": "tsc --build --clean && tsc && node build/index.js",
     "dev": "npx nodemon src/index.ts",
     "registerCommands": "set IS_REGISTER_CMD=1&& mocha \"test/services/DiscordService.test.ts\"",
     "testAll": "mocha \"test/**/*.test.ts\"",
